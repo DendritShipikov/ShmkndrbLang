@@ -96,6 +96,7 @@ public:
   const Unit* data() const { return m_units.data(); }
   void append(Unit unit) { m_units.push_back(unit); }
   size_t size() const { return m_units.size(); }
+  void set_unit(size_t index, Unit unit) { m_units[index] = unit; }
   void print(std::ostream& os) const override {
     os << "Code:\n";
     std::string prefix("");
@@ -368,6 +369,8 @@ public:
         case INVOKE: invoke(); break;
         case RETURN_VALUE: return_value(); break;
         case RETURN: ret(); break;
+        case JUMP_IF: jump_if(); break;
+        case JUMP: jump(); break;
         case PUSH_LOCAL: push_local(); break;
         case PUSH_CONST: push_const(); break;
         case PUSH_CAPTURE: push_capture(); break;
@@ -381,20 +384,6 @@ public:
       }
     }
   }
-  /*
-  INVOKE, // args_count
-  RETURN_VALUE,
-  RETURN,
-  PUSH_LOCAL, // ilocal
-  PUSH_CONST, // iconst
-  PUSH_CAPTURE, // icapture
-  POP_LOCAL, // ilocal
-  ADD,
-  SUB,
-  MUL,
-  PRINT,
-  MAKE_FUNCTION // args_count, captures_count
-  */
 };
 
 namespace AST {
@@ -474,6 +463,9 @@ namespace AST {
   };
 
   struct IfThenElse : Expr {
+    IfThenElse(std::unique_ptr<Expr>&& cond, std::unique_ptr<Expr>&& then, std::unique_ptr<Expr>&& otherwise) :
+      Expr(), m_cond(std::move(cond)), m_then(std::move(then)), m_otherwise(std::move(otherwise)) {}
+    ~IfThenElse() = default;
     std::unique_ptr<Expr> m_cond, m_then, m_otherwise;
     DEFACCEPT
   };
@@ -563,9 +555,25 @@ public:
     m_code->append(value.m_argvec.size());
   }
   void visit(const AST::IfThenElse& ite) {
+    size_t then_offset = 0;
+    size_t end_offset = 0;
+    //cond:
     ite.m_cond->accept(*this);
-    ite.m_then->accept(*this);
+    m_code->append(JUMP_IF);
+    size_t then_label = m_code->size();
+    m_code->append(then_offset); //!!!
+    //otherwise:
     ite.m_otherwise->accept(*this);
+    m_code->append(JUMP);
+    size_t end_label = m_code->size();
+    m_code->append(end_offset); //!!!
+    then_offset = m_code->size();
+    //then:
+    ite.m_then->accept(*this);
+    end_offset = m_code->size();
+    //end:
+    m_code->set_unit(then_label, then_offset);
+    m_code->set_unit(end_label, end_offset);
   }
   void visit(const AST::Lambda& lambda) override {
     Table locals_table{};
@@ -670,6 +678,9 @@ public:
       m_value = std::string_view(begin, m_current - begin);
       if (m_value == "function") return m_token = 'f';
       if (m_value == "print") return m_token = 'p';
+      if (m_value == "if") return m_token = 'i';
+      if (m_value == "then") return m_token = 't';
+      if (m_value == "else") return m_token = 'e';
       return m_token = 'a';
     }
     throw std::runtime_error("Lexer error: unknown token");
@@ -700,6 +711,17 @@ std::unique_ptr<AST::Expr> Parser::parse_expr() {
     next_token();
     auto body = parse_expr();
     return std::make_unique<AST::Lambda>(std::move(params), std::move(body));
+  }
+  if (m_token == 'i') {
+    next_token();
+    auto cond = parse_expr();
+    if (m_token != 't') throw std::runtime_error("Parser error: 'then' expected");
+    next_token();
+    auto then = parse_expr();
+    if (m_token != 'e') throw std::runtime_error("Parser error: 'else' expected");
+    next_token();
+    auto otherwise = parse_expr();
+    return std::make_unique<AST::IfThenElse>(std::move(cond), std::move(then), std::move(otherwise));
   }
   auto left = parse_term();
   while (m_token == '+' || m_token == '-') {
