@@ -58,6 +58,7 @@ public:
   virtual Pointer<Object> add(const Object*) const { throw std::runtime_error("'add' N/I"); }
   virtual Pointer<Object> sub(const Object*) const { throw std::runtime_error("'sub' N/I"); }
   virtual Pointer<Object> mul(const Object*) const { throw std::runtime_error("'mul' N/I"); }
+  virtual bool is_true() const { return true; }
   virtual void print(std::ostream&) const { throw std::runtime_error("'print' N/I"); }
   virtual int id() const = 0;
 private:
@@ -73,6 +74,8 @@ enum {
   INVOKE, // args_count
   RETURN_VALUE,
   RETURN,
+  JUMP_IF, // offset
+  JUMP, // offset
   PUSH_LOCAL, // ilocal
   PUSH_CONST, // iconst
   PUSH_CAPTURE, // icapture
@@ -92,6 +95,7 @@ public:
   ~Code() = default;
   const Unit* data() const { return m_units.data(); }
   void append(Unit unit) { m_units.push_back(unit); }
+  size_t size() const { return m_units.size(); }
   void print(std::ostream& os) const override {
     os << "Code:\n";
     std::string prefix("");
@@ -110,6 +114,16 @@ public:
         }
         case RETURN: {
           os << prefix << "RETURN\n";
+          break;
+        }
+        case JUMP_IF: {
+          size_t offset = *cur++;
+          os << prefix << "JUMP_IF: offset = " << offset << std::endl;
+          break;
+        }
+        case JUMP: {
+          size_t offset = *cur++;
+          os << prefix << "JUMP: offset = " << offset << std::endl;
           break;
         }
         case PUSH_LOCAL: {
@@ -182,6 +196,7 @@ public:
     const Integer* other = static_cast<const Integer*>(obj);
     return Pointer<Object>(new Integer(this->m_data * other->m_data));
   }
+  bool is_true() const override { return m_data != 0; }
   void print(std::ostream& os) const override { os << "Integer: " << m_data << std::endl; }
   int id() const override { return INTEGER_ID; }
 };
@@ -261,6 +276,23 @@ public:
     Frame* back = m_frame->m_back;
     delete m_frame;
     m_frame = back;
+  }
+  void jump_if() {
+    size_t offset = *m_frame->m_current++;
+    Code* code = m_frame->m_function->m_code.get();
+    if (offset >= code->size()) throw std::runtime_error("JUMP_IF: offset >= code.size");
+    auto& locals = m_frame->m_locals;
+    if (locals.empty()) throw std::runtime_error("JUMP_IF: locals.empty");
+    auto obj = std::move(locals.back()); locals.pop_back();
+    if (obj->is_true()) {
+      m_frame->m_current = code->data() + offset;
+    }
+  }
+  void jump() {
+    size_t offset = *m_frame->m_current++;
+    Code* code = m_frame->m_function->m_code.get();
+    if (offset >= code->size()) throw std::runtime_error("JUMP: offset >= code.size");
+    m_frame->m_current = code->data() + offset;
   }
   void push_local() {
     size_t ilocal = *m_frame->m_current++;
@@ -374,6 +406,7 @@ namespace AST {
   struct Name;
   struct BinOp;
   struct Value;
+  struct IfThenElse;
   struct Lambda;
   struct Assign;
   struct Print;
@@ -390,6 +423,7 @@ namespace AST {
     DECLVISIT(Name)
     DECLVISIT(BinOp)
     DECLVISIT(Value)
+    DECLVISIT(IfThenElse)
     DECLVISIT(Lambda)
     DECLVISIT(Assign)
     DECLVISIT(Print)
@@ -436,6 +470,11 @@ namespace AST {
     ~Value() = default;
     std::vector< std::unique_ptr<Expr> > m_argvec;
     std::unique_ptr<Expr> m_func;
+    DEFACCEPT
+  };
+
+  struct IfThenElse : Expr {
+    std::unique_ptr<Expr> m_cond, m_then, m_otherwise;
     DEFACCEPT
   };
 
@@ -522,6 +561,11 @@ public:
     for (auto iter = value.m_argvec.rbegin(); iter != value.m_argvec.rend(); ++iter) (*iter)->accept(*this);
     m_code->append(INVOKE);
     m_code->append(value.m_argvec.size());
+  }
+  void visit(const AST::IfThenElse& ite) {
+    ite.m_cond->accept(*this);
+    ite.m_then->accept(*this);
+    ite.m_otherwise->accept(*this);
   }
   void visit(const AST::Lambda& lambda) override {
     Table locals_table{};
