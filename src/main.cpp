@@ -809,6 +809,7 @@ public:
       if (m_value == "if") return m_token = 'i';
       if (m_value == "then") return m_token = 't';
       if (m_value == "else") return m_token = 'e';
+      if (m_value == "self") return m_token = 's';
       return m_token = 'a';
     }
     throw std::runtime_error("Lexer error: unknown token");
@@ -900,6 +901,37 @@ std::unique_ptr<AST::Expr> Parser::parse_prim() {
         func = std::make_unique<AST::Value>(std::move(func), std::move(argvec));
       }
       return func;
+    }
+    case 's': {
+      if (next_token() != '(') throw std::runtime_error("Parser error: expected '(' after 'self'");
+      std::vector< std::unique_ptr<AST::Expr> > argvec{};
+      if (next_token() != ')') {
+        for (;;) {
+          auto arg = parse_expr();
+          argvec.push_back(std::move(arg));
+          if (m_token != ',') break;
+          next_token();
+        }
+        if (m_token != ')') throw std::runtime_error("Parser error: expected ')' in argvec");
+      }
+      next_token();
+      //TODO: delete repeated code, maybe rewrite parser
+      std::unique_ptr<AST::Expr> expr = std::make_unique<AST::SelfValue>(std::move(argvec));
+      while (m_token == '(') {
+        argvec = std::vector< std::unique_ptr<AST::Expr> >();
+        if (next_token() != ')') {
+          for (;;) {
+            auto arg = parse_expr();
+            argvec.push_back(std::move(arg));
+            if (m_token != ',') break;
+            next_token();
+          }
+          if (m_token != ')') throw std::runtime_error("Parser error: expected ')' in argvec");
+        }
+        next_token();
+        expr = std::make_unique<AST::Value>(std::move(expr), std::move(argvec));
+      }
+      return expr;
     }
     case '(': {
       next_token();
