@@ -74,6 +74,7 @@ private:
 
 enum {
   INVOKE, // args_count
+  TAIL, // args_count
   RETURN_VALUE,
   RETURN,
   JUMP_IF, // offset
@@ -111,6 +112,11 @@ public:
         case INVOKE: {
           size_t args_count = *cur++;
           os << prefix << "INVOKE: args_count = " << args_count << std::endl;
+          break;
+        }
+        case TAIL: {
+          size_t args_count = *cur++;
+          os << prefix << "TAIL: args_count = " << args_count << std::endl;
           break;
         }
         case RETURN_VALUE: {
@@ -266,6 +272,23 @@ public:
     frame->m_back = m_frame;
     m_frame = frame;
     m_depth++;
+  }
+  void tail() {
+    size_t args_count = *m_frame->m_current++;
+    auto& locals = m_frame->m_locals;
+    if (args_count +  1 > locals.size()) throw std::runtime_error("TAIL: args_count + 1 > locals.size");
+    std::vector< Pointer<Object> > new_locals{};
+    for (size_t i = 0; i < args_count; ++i) {
+      new_locals.push_back(std::move(locals.back()));
+      locals.pop_back();
+    }
+    Pointer<Object> object = std::move(locals.back()); locals.pop_back();
+    if (object->id() != FUNCTION_ID) throw std::runtime_error("TAIL: wrong function type");
+    Pointer<Function> function{static_cast<Function*>(object.get())};
+    if (args_count != function->m_args_count) throw std::runtime_error("TAIL: args_count != function.args_count");
+    m_frame->m_locals = std::move(new_locals);
+    m_frame->m_function = std::move(function);
+    m_frame->m_current = m_frame->m_function->m_code->data();
   }
   void return_value() {
     auto& locals = m_frame->m_locals;
