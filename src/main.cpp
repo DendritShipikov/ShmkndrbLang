@@ -6,6 +6,8 @@
 #include <vector>
 #include <unordered_map>
 #include <stdexcept>
+#include <cstring>
+#include <cstddef>
 
 template<class T>
 class Pointer {
@@ -99,10 +101,12 @@ public:
   void set_unit(size_t index, Unit unit) { m_units[index] = unit; }
   void print(std::ostream& os) const override {
     os << "Code:\n";
-    std::string prefix("");
+    std::string prefix("\t");
     const Unit* cur = m_units.data();
+    const Unit* begin = cur;
     const Unit* end = cur + m_units.size();
     while (cur != end) {
+      os << (cur - begin);
       switch (*cur++) {
         case INVOKE: {
           size_t args_count = *cur++;
@@ -166,7 +170,7 @@ public:
         case MAKE_FUNCTION: {
           size_t args_count = *cur++;
           size_t captures_count = *cur++;
-          os << "MAKE_FUNCTION: args_count = " << args_count << ", captures_count = " << captures_count << std::endl;
+          os << prefix << "MAKE_FUNCTION: args_count = " << args_count << ", captures_count = " << captures_count << std::endl;
           break;
         }
         default:
@@ -455,7 +459,7 @@ namespace AST {
   };
 
   struct Value : Expr {
-    Value(std::unique_ptr<Expr>&& func, std::vector< std::unique_ptr<Expr> >&& argvec) : Expr(), m_func(std::move(func)), m_argvec(std::move(argvec)) {}
+    Value(std::unique_ptr<Expr>&& func, std::vector< std::unique_ptr<Expr> >&& argvec) : Expr(), m_argvec(std::move(argvec)), m_func(std::move(func)) {}
     ~Value() = default;
     std::vector< std::unique_ptr<Expr> > m_argvec;
     std::unique_ptr<Expr> m_func;
