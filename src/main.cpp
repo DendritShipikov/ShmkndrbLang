@@ -74,7 +74,9 @@ private:
 
 enum {
   INVOKE, // args_count
+  INVOKE_SELF, // args_count
   TAIL, // args_count
+  TAIL_SELF, // args_count
   RETURN_VALUE,
   RETURN,
   JUMP_IF, // offset
@@ -114,9 +116,19 @@ public:
           os << prefix << "INVOKE: args_count = " << args_count << std::endl;
           break;
         }
+        case INVOKE_SELF: {
+          size_t args_count = *cur++;
+          os << prefix << "INVOKE_SELF: args_count = " << args_count << std::endl;
+          break;
+        }
         case TAIL: {
           size_t args_count = *cur++;
           os << prefix << "TAIL: args_count = " << args_count << std::endl;
+          break;
+        }
+        case TAIL_SELF: {
+          size_t args_count = *cur++;
+          os << prefix << "TAIL_SELF: args_count = " << args_count << std::endl;
           break;
         }
         case RETURN_VALUE: {
@@ -273,6 +285,25 @@ public:
     m_frame = frame;
     m_depth++;
   }
+  void invoke_self() {
+    if (m_depth == MAX_DEPTH) throw std::runtime_error("INVOKE_SELF: stack overflow");
+    size_t args_count = *m_frame->m_current++;
+    if (args_count != m_frame->m_function->m_args_count) throw std::runtime_error("INVOKE_SELF: args_count != function.args_count");
+    auto& locals = m_frame->m_locals;
+    if (args_count > locals.size()) throw std::runtime_error("INVOKE_SELF: args_count > locals.size");
+    std::vector< Pointer<Object> > new_locals{};
+    for (size_t i = 0; i < args_count; ++i) {
+      new_locals.push_back(std::move(locals.back()));
+      locals.pop_back();
+    }
+    Frame* frame = new Frame();
+    frame->m_locals = std::move(new_locals);
+    frame->m_function = m_frame->m_function;
+    frame->m_current = frame->m_function->m_code->data();
+    frame->m_back = m_frame;
+    m_frame = frame;
+    m_depth++;
+  }
   void tail() {
     size_t args_count = *m_frame->m_current++;
     auto& locals = m_frame->m_locals;
@@ -288,6 +319,19 @@ public:
     if (args_count != function->m_args_count) throw std::runtime_error("TAIL: args_count != function.args_count");
     m_frame->m_locals = std::move(new_locals);
     m_frame->m_function = std::move(function);
+    m_frame->m_current = m_frame->m_function->m_code->data();
+  }
+  void tail_self() {
+    size_t args_count = *m_frame->m_current++;
+    if (args_count != m_frame->m_function->m_args_count) throw std::runtime_error("TAIL_SELF: args_count != function.args_count");
+    auto& locals = m_frame->m_locals;
+    if (args_count > locals.size()) throw std::runtime_error("TAIL_SELF: args_count > locals.size");
+    std::vector< Pointer<Object> > new_locals{};
+    for (size_t i = 0; i < args_count; ++i) {
+      new_locals.push_back(std::move(locals.back()));
+      locals.pop_back();
+    }
+    m_frame->m_locals = std::move(new_locals);
     m_frame->m_current = m_frame->m_function->m_code->data();
   }
   void return_value() {
@@ -394,6 +438,7 @@ public:
     while (m_frame != nullptr) {
       switch (*m_frame->m_current++) {
         case INVOKE: invoke(); break;
+        case INVOKE_SELF: invoke_self(); break;
         case TAIL: tail(); break;
         case RETURN_VALUE: return_value(); break;
         case RETURN: ret(); break;
