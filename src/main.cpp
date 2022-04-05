@@ -440,6 +440,7 @@ public:
         case INVOKE: invoke(); break;
         case INVOKE_SELF: invoke_self(); break;
         case TAIL: tail(); break;
+        case TAIL_SELF: tail_self(); break;
         case RETURN_VALUE: return_value(); break;
         case RETURN: ret(); break;
         case JUMP_IF: jump_if(); break;
@@ -468,6 +469,7 @@ namespace AST {
   struct Name;
   struct BinOp;
   struct Value;
+  struct SelfValue;
   struct IfThenElse;
   struct Lambda;
   struct Assign;
@@ -485,6 +487,7 @@ namespace AST {
     DECLVISIT(Name)
     DECLVISIT(BinOp)
     DECLVISIT(Value)
+    DECLVISIT(SelfValue)
     DECLVISIT(IfThenElse)
     DECLVISIT(Lambda)
     DECLVISIT(Assign)
@@ -532,6 +535,13 @@ namespace AST {
     ~Value() = default;
     std::vector< std::unique_ptr<Expr> > m_argvec;
     std::unique_ptr<Expr> m_func;
+    DEFACCEPT
+  };
+
+  struct SelfValue : Expr {
+    SelfValue(std::vector< std::unique_ptr<Expr> >&& argvec) : Expr(), m_argvec(std::move(argvec)) {}
+    ~SelfValue() = default;
+    std::vector< std::unique_ptr<Expr> > m_argvec;
     DEFACCEPT
   };
 
@@ -637,6 +647,15 @@ public:
     if (m_tail) m_code->append(TAIL);
     else m_code->append(INVOKE);
     m_code->append(value.m_argvec.size());
+  }
+  void visit(const AST::SelfValue& selfvalue) override {
+    bool tail = false;
+    std::swap(m_tail, tail);
+    for (auto iter = selfvalue.m_argvec.rbegin(); iter != selfvalue.m_argvec.rend(); ++iter) (*iter)->accept(*this);
+    std::swap(m_tail, tail);
+    if (m_tail) m_code->append(TAIL_SELF);
+    else m_code->append(INVOKE_SELF);
+    m_code->append(selfvalue.m_argvec.size());
   }
   void visit(const AST::IfThenElse& ite) {
     if (m_tail) {
