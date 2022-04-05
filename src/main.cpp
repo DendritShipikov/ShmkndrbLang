@@ -394,6 +394,7 @@ public:
     while (m_frame != nullptr) {
       switch (*m_frame->m_current++) {
         case INVOKE: invoke(); break;
+        case TAIL: tail(); break;
         case RETURN_VALUE: return_value(); break;
         case RETURN: ret(); break;
         case JUMP_IF: jump_if(); break;
@@ -588,9 +589,9 @@ public:
     value.m_func->accept(*this);
     for (auto iter = value.m_argvec.rbegin(); iter != value.m_argvec.rend(); ++iter) (*iter)->accept(*this);
     std::swap(m_tail, tail);
-    m_code->append(INVOKE);
+    if (m_tail) m_code->append(TAIL);
+    else m_code->append(INVOKE);
     m_code->append(value.m_argvec.size());
-    if (m_tail) m_code->append(RETURN_VALUE);
   }
   void visit(const AST::IfThenElse& ite) {
     if (m_tail) {
