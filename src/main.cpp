@@ -748,7 +748,6 @@ public:
     print.m_expr->accept(*this);
     m_code->append(PRINT);
   }
-#ifdef DEBUG
   void show() {
     std::cout << "====CONSTS====\n";
     for (auto& obj : m_consts) obj->print(std::cout);
@@ -757,7 +756,6 @@ public:
     std::cout << "===CAPTURES===\n";
     for (auto& capture : m_captures) std::cout << capture << std::endl;
   }
-#endif
   void compile(const std::vector< std::unique_ptr<AST::Stmt> >& stmts) {
     for (auto& stmt : stmts) stmt->accept(*this);
     if (!m_captures.empty()) throw std::runtime_error("Compiler error: undefined captures");
@@ -832,7 +830,7 @@ std::unique_ptr<AST::Expr> Parser::parse_expr() {
     next_token();
     std::vector<std::string> params{};
     while (m_token == 'a') {
-      params.push_back(std::string{m_value});
+      params.push_back(std::string(m_value));
       if (next_token() != ',') break;
       next_token();
     }
@@ -883,7 +881,7 @@ std::unique_ptr<AST::Expr> Parser::parse_prim() {
       return std::make_unique<AST::Literal>(std::move(integer));
     }
     case 'a': {
-      auto name = std::make_unique<AST::Name>(std::string{m_value});
+      auto name = std::make_unique<AST::Name>(std::string(m_value));
       if (next_token() != '(') return name;
       std::unique_ptr<AST::Expr> func = std::move(name);
       while (m_token == '(') {
