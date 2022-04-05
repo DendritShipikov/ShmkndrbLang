@@ -508,6 +508,7 @@ private:
   std::vector<std::string> m_captures;
   std::vector< Pointer<Object> > m_consts;
   Pointer<Code> m_code;
+  bool m_tail;
 public:
   Compiler() : AST::Visitor(), m_locals_table(), m_captures(), m_consts(), m_code(Pointer<Code>{new Code()}) {}
   ~Compiler() = default;
@@ -516,6 +517,7 @@ public:
     m_consts.push_back(literal.m_object);
     m_code->append(PUSH_CONST);
     m_code->append(iconst);
+    if (m_tail) m_code->append(RETURN_VALUE);
   }
   void visit(const AST::Name& name) override {
     auto iter = m_locals_table.find(name.m_data);
@@ -534,10 +536,14 @@ public:
       m_code->append(PUSH_CAPTURE);
       m_code->append(icapture);
     }
+    if (m_tail) m_code->append(RETURN_VALUE);
   }
   void visit(const AST::BinOp& binop) override {
+    bool tail = false;
+    std::swap(m_tail, tail);
     binop.m_left->accept(*this);
     binop.m_right->accept(*this);
+    std::swap(m_tail, tail);
     switch (binop.m_kind) {
       case AST::BinOp::ADD:
         m_code->append(ADD);
@@ -551,33 +557,56 @@ public:
       default:
         break;
     }
+    if (m_tail) m_code->append(RETURN_VALUE);
   }
   void visit(const AST::Value& value) override {
+    bool tail = false;
+    std::swap(m_tail, tail);
     value.m_func->accept(*this);
     for (auto iter = value.m_argvec.rbegin(); iter != value.m_argvec.rend(); ++iter) (*iter)->accept(*this);
+    std::swap(m_tail, tail);
     m_code->append(INVOKE);
     m_code->append(value.m_argvec.size());
+    if (m_tail) m_code->append(RETURN_VALUE);
   }
   void visit(const AST::IfThenElse& ite) {
-    size_t then_offset = 0;
-    size_t end_offset = 0;
-    //cond:
-    ite.m_cond->accept(*this);
-    m_code->append(JUMP_IF);
-    size_t then_label = m_code->size();
-    m_code->append(then_offset); //!!!
-    //otherwise:
-    ite.m_otherwise->accept(*this);
-    m_code->append(JUMP);
-    size_t end_label = m_code->size();
-    m_code->append(end_offset); //!!!
-    then_offset = m_code->size();
-    //then:
-    ite.m_then->accept(*this);
-    end_offset = m_code->size();
-    //end:
-    m_code->set_unit(then_label, then_offset);
-    m_code->set_unit(end_label, end_offset);
+    if (m_tail) {
+      /*  <cond>  */
+      m_tail = false;
+      ite.m_cond->accept(*this);
+      m_tail = true;
+      /*  JUMP_IF then_offset  */
+      m_code->append(JUMP_IF);
+      size_t then_offset_index = m_code->size();
+      m_code->append(0); /* mock for then_offset */
+      /*  <otherwise>  */
+      ite.m_otherwise->accept(*this);
+      /*  <then>  */
+      size_t then_offset = m_code->size();
+      ite.m_then->accept(*this);
+      /*  set actuals offset  */
+      m_code->set_unit(then_offset_index, then_offset);
+    } else {
+      /*  <cond>  */
+      ite.m_cond->accept(*this);
+      /*  JUMP_IF then_offset  */
+      m_code->append(JUMP_IF);
+      size_t then_offset_index = m_code->size();
+      m_code->append(0); /* mock for then_offset */
+      /*  <otherwise>  */
+      ite.m_otherwise->accept(*this);
+      /*  JUMP end_offset  */
+      m_code->append(JUMP);
+      size_t end_offset_index = m_code->size();
+      m_code->append(0); /* mock for end_offset */
+      /*  <then>  */
+      size_t then_offset = m_code->size(); ite.m_then->accept(*this);
+      /*  <...>  */
+      size_t end_offset = m_code->size();
+      /*  set actuals offsets  */
+      m_code->set_unit(then_offset_index, then_offset);
+      m_code->set_unit(end_offset_index, end_offset);
+    }
   }
   void visit(const AST::Lambda& lambda) override {
     Table locals_table{};
@@ -587,28 +616,34 @@ public:
       locals_table[param] = args_count++;
     }
     Pointer<Code> code{new Code()};
+    bool tail = true;
     std::vector<std::string> captures{};
     std::swap(m_locals_table, locals_table);
     std::swap(m_code, code);
     std::swap(m_captures, captures);
+    std::swap(tail, m_tail);
     lambda.m_body->accept(*this);
-    m_code->append(RETURN_VALUE);
     std::swap(m_locals_table, locals_table);
     std::swap(m_code, code);
     std::swap(m_captures, captures);
+    std::swap(m_tail, tail);
     size_t icode = m_consts.size();
     m_consts.push_back(std::move(code));
     m_code->append(PUSH_CONST);
     m_code->append(icode);
-    for (auto iter = captures.rbegin(); iter != captures.rend(); ++iter) visit(AST::Name{*iter});
+    tail = false; // collect captures on stack
+    std::swap(m_tail, tail);
+    for (auto iter = captures.rbegin(); iter != captures.rend(); ++iter) visit(AST::Name(*iter));
+    std::swap(m_tail, tail);
     m_code->append(MAKE_FUNCTION);
     m_code->append(args_count);
     m_code->append(captures.size());
+    if (m_tail) m_code->append(RETURN_VALUE);
   }
   void visit(const AST::Assign& assign) override {
+    m_tail = false;
     assign.m_expr->accept(*this);
     auto iter = m_locals_table.find(assign.m_name);
-   //if (iter == m_locals_table.end()) throw std::runtime_error("Compiler error: undefined local");
     if (iter == m_locals_table.end()) {
       size_t ilocal = m_locals_table.size();
       m_locals_table[assign.m_name] = ilocal;
@@ -621,6 +656,7 @@ public:
     }
   }
   void visit(const AST::Print& print) override {
+    m_tail = false;
     print.m_expr->accept(*this);
     m_code->append(PRINT);
   }
