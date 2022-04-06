@@ -822,6 +822,7 @@ public:
   std::unique_ptr<AST::Expr> parse_term();
   std::unique_ptr<AST::Expr> parse_expr();
   std::vector< std::unique_ptr<AST::Expr> > parse_argvec();
+  std::unique_ptr<AST::Expr> parse_value();
   std::unique_ptr<AST::Stmt> parse_stmt();
   std::vector< std::unique_ptr<AST::Stmt> > parse_stmts();
 };
@@ -863,13 +864,22 @@ std::unique_ptr<AST::Expr> Parser::parse_expr() {
 }
 
 std::unique_ptr<AST::Expr> Parser::parse_term() {
-  auto left = parse_prim();
+  auto left = parse_value();
   while (m_token == '*') {
     next_token();
-    auto right = parse_prim();
+    auto right = parse_value();
     left = std::make_unique<AST::BinOp>(std::move(left), std::move(right), AST::BinOp::MUL);
   }
   return left;
+}
+
+std::unique_ptr<AST::Expr> Parser::parse_value() {
+  auto expr = parse_prim();
+  while (m_token == '(') {
+    auto argvec = parse_argvec();
+    expr = std::make_unique<AST::Value>(std::move(expr), std::move(argvec));
+  }
+  return expr;
 }
 
 std::unique_ptr<AST::Expr> Parser::parse_prim() {
@@ -883,33 +893,19 @@ std::unique_ptr<AST::Expr> Parser::parse_prim() {
     }
     case 'a': {
       auto name = std::make_unique<AST::Name>(std::string(m_value));
-      if (next_token() != '(') return name;
-      std::unique_ptr<AST::Expr> func = std::move(name);
-      while (m_token == '(') {
-        auto argvec = parse_argvec();
-        func = std::make_unique<AST::Value>(std::move(func), std::move(argvec));
-      }
-      return func;
+      next_token();
+      return name;
     }
     case 's': {
       if (next_token() != '(') throw std::runtime_error("Parser error: expected '(' after 'self'");
       auto argvec = parse_argvec();
-      std::unique_ptr<AST::Expr> expr = std::make_unique<AST::SelfValue>(std::move(argvec));
-      while (m_token == '(') {
-        argvec = parse_argvec();
-        expr = std::make_unique<AST::Value>(std::move(expr), std::move(argvec));
-      }
-      return expr;
+      return std::make_unique<AST::SelfValue>(std::move(argvec));
     }
     case '(': {
       next_token();
       auto expr = parse_expr();
       if (m_token != ')') throw std::runtime_error("Parser error: expected ')'");
-      if (next_token() != '(') return expr;
-      while (m_token == '(') {
-        auto argvec = parse_argvec();
-        expr = std::make_unique<AST::Value>(std::move(expr), std::move(argvec));
-      }
+      next_token();
       return expr;
     }
     default:
