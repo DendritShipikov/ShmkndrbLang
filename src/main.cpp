@@ -821,6 +821,7 @@ public:
   std::unique_ptr<AST::Expr> parse_prim();
   std::unique_ptr<AST::Expr> parse_term();
   std::unique_ptr<AST::Expr> parse_expr();
+  std::vector< std::unique_ptr<AST::Expr> > parse_argvec();
   std::unique_ptr<AST::Stmt> parse_stmt();
   std::vector< std::unique_ptr<AST::Stmt> > parse_stmts();
 };
@@ -885,48 +886,17 @@ std::unique_ptr<AST::Expr> Parser::parse_prim() {
       if (next_token() != '(') return name;
       std::unique_ptr<AST::Expr> func = std::move(name);
       while (m_token == '(') {
-        std::vector< std::unique_ptr<AST::Expr> > argvec{};
-        if (next_token() != ')') {
-          for (;;) {
-            auto arg = parse_expr();
-            argvec.push_back(std::move(arg));
-            if (m_token != ',') break;
-            next_token();
-          }
-          if (m_token != ')') throw std::runtime_error("Parser error: expected ')' in argvec");
-        }
-        next_token();
+        auto argvec = parse_argvec();
         func = std::make_unique<AST::Value>(std::move(func), std::move(argvec));
       }
       return func;
     }
     case 's': {
       if (next_token() != '(') throw std::runtime_error("Parser error: expected '(' after 'self'");
-      std::vector< std::unique_ptr<AST::Expr> > argvec{};
-      if (next_token() != ')') {
-        for (;;) {
-          auto arg = parse_expr();
-          argvec.push_back(std::move(arg));
-          if (m_token != ',') break;
-          next_token();
-        }
-        if (m_token != ')') throw std::runtime_error("Parser error: expected ')' in argvec");
-      }
-      next_token();
-      //TODO: delete repeated code, maybe rewrite parser
+      auto argvec = parse_argvec();
       std::unique_ptr<AST::Expr> expr = std::make_unique<AST::SelfValue>(std::move(argvec));
       while (m_token == '(') {
-        argvec = std::vector< std::unique_ptr<AST::Expr> >();
-        if (next_token() != ')') {
-          for (;;) {
-            auto arg = parse_expr();
-            argvec.push_back(std::move(arg));
-            if (m_token != ',') break;
-            next_token();
-          }
-          if (m_token != ')') throw std::runtime_error("Parser error: expected ')' in argvec");
-        }
-        next_token();
+        argvec = parse_argvec();
         expr = std::make_unique<AST::Value>(std::move(expr), std::move(argvec));
       }
       return expr;
@@ -936,26 +906,31 @@ std::unique_ptr<AST::Expr> Parser::parse_prim() {
       auto expr = parse_expr();
       if (m_token != ')') throw std::runtime_error("Parser error: expected ')'");
       if (next_token() != '(') return expr;
-      //TODO
       while (m_token == '(') {
-        std::vector< std::unique_ptr<AST::Expr> > argvec{};
-        if (next_token() != ')') {
-          for (;;) {
-            auto arg = parse_expr();
-            argvec.push_back(std::move(arg));
-            if (m_token != ',') break;
-            next_token();
-          }
-          if (m_token != ')') throw std::runtime_error("Parser error: expected ')' in argvec");
-        }
-        next_token();
-       expr = std::make_unique<AST::Value>(std::move(expr), std::move(argvec));
+        auto argvec = parse_argvec();
+        expr = std::make_unique<AST::Value>(std::move(expr), std::move(argvec));
       }
       return expr;
     }
     default:
       throw std::runtime_error("Parser error: wrong primary expression");
   }
+}
+
+std::vector< std::unique_ptr<AST::Expr> > Parser::parse_argvec() {
+  /* assume that m_token == '(' */
+  std::vector< std::unique_ptr<AST::Expr> > argvec{};
+  if (next_token() != ')') {
+    for (;;) {
+      auto arg = parse_expr();
+      argvec.push_back(std::move(arg));
+      if (m_token != ',') break;
+      next_token();
+    }
+    if (m_token != ')') throw std::runtime_error("Parser error: expected ')' in argvec");
+  }
+  next_token();
+  return argvec;
 }
 
 std::unique_ptr<AST::Stmt> Parser::parse_stmt() {
