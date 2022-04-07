@@ -60,6 +60,7 @@ public:
   virtual Pointer<Object> add(const Object*) const { throw std::runtime_error("'add' N/I"); }
   virtual Pointer<Object> sub(const Object*) const { throw std::runtime_error("'sub' N/I"); }
   virtual Pointer<Object> mul(const Object*) const { throw std::runtime_error("'mul' N/I"); }
+  virtual Pointer<Object> div(const Object*) const { throw std::runtime_error("'div' N/I"); }
   virtual bool is_true() const { return true; }
   virtual void print(std::ostream&) const { throw std::runtime_error("'print' N/I"); }
   virtual int id() const = 0;
@@ -88,6 +89,7 @@ enum {
   ADD,
   SUB,
   MUL,
+  DIV,
   PRINT,
   MAKE_FUNCTION // args_count, captures_count
 };
@@ -181,6 +183,10 @@ public:
           os << prefix << "MUL\n";
           break;
         }
+        case DIV: {
+          os << prefix << "DIV\n";
+          break;
+        }
         case PRINT: {
           os << prefix << "PRINT\n";
           break;
@@ -218,6 +224,12 @@ public:
     if (obj->id() != INTEGER_ID) throw std::runtime_error("'integer.mul' N/I for given type");
     const Integer* other = static_cast<const Integer*>(obj);
     return Pointer<Object>(new Integer(this->m_data * other->m_data));
+  }
+  Pointer<Object> div(const Object* obj) const override {
+    if (obj->id() != INTEGER_ID) throw std::runtime_error("'integer.div' N/I for given type");
+    const Integer* other = static_cast<const Integer*>(obj);
+    if (other->m_data == 0) throw std::runtime_error("Error: division by zero");
+    return Pointer<Object>(new Integer(this->m_data / other->m_data));
   }
   bool is_true() const override { return m_data != 0; }
   void print(std::ostream& os) const override { os << "Integer: " << m_data << std::endl; }
@@ -413,6 +425,13 @@ public:
     auto left = std::move(locals.back()); locals.pop_back();
     locals.push_back(left->mul(right.get()));
   }
+  void div() {
+    auto& locals = m_frame->m_locals;
+    if (2 > locals.size()) throw std::runtime_error("DIV: 2 > locals.size");
+    auto right = std::move(locals.back()); locals.pop_back();
+    auto left = std::move(locals.back()); locals.pop_back();
+    locals.push_back(left->div(right.get()));
+  }
   void print() {
     auto& locals = m_frame->m_locals;
     if (locals.empty()) throw std::runtime_error("PRINT: locals.empty");
@@ -452,6 +471,7 @@ public:
         case ADD: add(); break;
         case SUB: sub(); break;
         case MUL: mul(); break;
+        case DIV: div(); break;
         case PRINT: print(); break;
         case MAKE_FUNCTION: make_function(); break;
         default: throw std::runtime_error("Evaler error: unknown opcode");
@@ -522,7 +542,7 @@ namespace AST {
   };
 
   struct BinOp : Expr {
-    enum Kind { ADD, SUB, MUL };
+    enum Kind { ADD, SUB, MUL, DIV };
     BinOp(std::unique_ptr<Expr>&& left, std::unique_ptr<Expr>&& right, Kind kind) : Expr(), m_left(std::move(left)), m_right(std::move(right)), m_kind(kind) {}
     ~BinOp() = default;
     std::unique_ptr<Expr> m_left, m_right;
@@ -632,6 +652,9 @@ public:
         break;
       case AST::BinOp::MUL:
         m_code->append(MUL);
+        break;
+      case AST::BinOp::DIV:
+        m_code->append(DIV);
         break;
       default:
         break;
@@ -783,6 +806,7 @@ public:
       case '+':
       case '-':
       case '*':
+      case '/':
       case '(':
       case ')':
       case ',':
@@ -865,10 +889,12 @@ std::unique_ptr<AST::Expr> Parser::parse_expr() {
 
 std::unique_ptr<AST::Expr> Parser::parse_term() {
   auto left = parse_value();
-  while (m_token == '*') {
+  while (m_token == '*' || m_token == '/') {
+    bool mul = m_token == '*';
     next_token();
     auto right = parse_value();
-    left = std::make_unique<AST::BinOp>(std::move(left), std::move(right), AST::BinOp::MUL);
+    if (mul) left = std::make_unique<AST::BinOp>(std::move(left), std::move(right), AST::BinOp::MUL);
+    else left = std::make_unique<AST::BinOp>(std::move(left), std::move(right), AST::BinOp::DIV);
   }
   return left;
 }
