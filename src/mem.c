@@ -23,7 +23,7 @@ int shmk_heap_create() {
   return 1;
 }
 
-void* shmk_alloc(size_t size) {
+void* shmk_heap_alloc(size_t size) {
   if (heap.top + size > heap.end) {
     fprintf(stderr, "Error: out of memory\n");
     return NULL;

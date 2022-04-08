@@ -6,7 +6,7 @@
 /* Integer */
 
 ShmkInteger_t* new_integer(int data) {
-  ShmkInteger_t* integer = (ShmkInteger_t*)shmk_alloc(sizeof(ShmkInteger_t));
+  ShmkInteger_t* integer = (ShmkInteger_t*)shmk_heap_alloc(sizeof(ShmkInteger_t));
   if (integer == NULL) return NULL;
   integer->base.vtable = &shmk_integer_vtable;
   integer->base.allocated_size = sizeof(ShmkInteger_t);
@@ -60,7 +60,7 @@ struct ShmkVTable shmk_integer_vtable = {
 
 ShmkArray_t* new_array(size_t size) {
   size_t allocated_size = offsetof(ShmkArray_t, objects) + size * sizeof(ShmkObject_t*);
-  ShmkArray_t* array = (ShmkArray_t*)shmk_alloc(allocated_size);
+  ShmkArray_t* array = (ShmkArray_t*)shmk_heap_alloc(allocated_size);
   if (array == NULL) return NULL;
   array->base.vtable = &shmk_array_vtable;
   array->base.allocated_size = allocated_size;
@@ -78,7 +78,7 @@ struct ShmkVTable shmk_array_vtable = {
 
 ShmkVector_t* new_vector(size_t capacity) {
   size_t allocated_size = sizeof(ShmkVector_t);
-  ShmkVector_t* vector = (ShmkVector_t*)shmk_alloc(allocated_size);
+  ShmkVector_t* vector = (ShmkVector_t*)shmk_heap_alloc(allocated_size);
   if (vector == NULL) return NULL;
   vector->base.vtable = &shmk_vector_vtable;
   vector->base.allocated_size = allocated_size;
@@ -99,7 +99,7 @@ struct ShmkVTable shmk_vector_vtable = {
 
 ShmkFunction_t* new_function(ShmkArray_t* captures, size_t args_count, size_t icode) {
   size_t allocated_size = sizeof(ShmkFunction_t);
-  ShmkFunction_t* function = (ShmkFunction_t*)shmk_alloc(allocated_size);
+  ShmkFunction_t* function = (ShmkFunction_t*)shmk_heap_alloc(allocated_size);
   if (function == NULL) return NULL;
   function->base.vtable = &shmk_function_vtable;
   function->base.allocated_size = allocated_size;

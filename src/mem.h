@@ -2,6 +2,6 @@
 #define SHMK_MEM_H
 
 int shmk_create_heap();
-void* shmk_alloc(size_t size);
+void* shmk_heap_alloc(size_t size);
 
 #endif
