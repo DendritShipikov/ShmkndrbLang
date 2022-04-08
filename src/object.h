@@ -50,4 +50,17 @@ ShmkVector_t* new_vector(size_t capacity);
 
 extern struct ShmkVTable shmk_vector_vtable;
 
+/* Function */
+
+typedef struct ShmkFunction {
+  ShmkObject_t base;
+  ShmkArray_t* captures;
+  size_t args_count;
+  size_t icode;
+} ShmkFunction_t;
+
+ShmkFunction_t* new_function(ShmkArray_t* captures, size_t args_count, size_t icode);
+
+extern struct ShmkVTable shmk_function_vtable;
+
 #endif

@@ -94,3 +94,24 @@ struct ShmkVTable shmk_vector_vtable = {
   NULL,
   NULL
 };
+
+/* Function */
+
+ShmkFunction_t* new_function(ShmkArray_t* captures, size_t args_count, size_t icode) {
+  size_t allocated_size = sizeof(ShmkFunction_t);
+  ShmkFunction_t* function = (ShmkFunction_t*)shmk_alloc(allocated_size);
+  if (function == NULL) return NULL;
+  function->base.vtable = &shmk_function_vtable;
+  function->base.allocated_size = allocated_size;
+  function->captures = captures;
+  function->args_count = args_count;
+  function->icode = icode;
+  return function;
+}
+
+struct ShmkVTable shmk_function_vtable = {
+  NULL,
+  NULL,
+  NULL,
+  NULL
+};
