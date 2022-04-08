@@ -38,4 +38,16 @@ ShmkArray_t* new_array(size_t size);
 
 extern struct ShmkVTable shmk_array_vtable;
 
+/* Vector */
+
+typedef struct ShmkVector {
+  ShmkObject_t base;
+  ShmkArray_t* array;
+  size_t size;
+} ShmkVector_t;
+
+ShmkVector_t* new_vector(size_t capacity);
+
+extern struct ShmkVTable shmk_vector_vtable;
+
 #endif

@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "mem.h"
 #include "object.h"
-
-void* shmk_alloc(size_t);
 
 /* Integer */
 
@@ -75,3 +74,23 @@ struct ShmkVTable shmk_array_vtable = {
   NULL
 };
 
+/* Vector */
+
+ShmkVector_t* new_vector(size_t capacity) {
+  size_t allocated_size = sizeof(ShmkVector_t);
+  ShmkVector_t* vector = (ShmkVector_t*)shmk_alloc(allocated_size);
+  if (vector == NULL) return NULL;
+  vector->base.vtable = &shmk_vector_vtable;
+  vector->base.allocated_size = allocated_size;
+  vector->array = new_array(capacity);
+  if (vector->array == NULL) return NULL;
+  vector->size = 0;
+  return vector;
+}
+
+struct ShmkVTable shmk_vector_vtable = {
+  NULL,
+  NULL,
+  NULL,
+  NULL
+};
