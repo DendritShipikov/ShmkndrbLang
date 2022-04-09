@@ -16,6 +16,11 @@ struct ShmkVTable {
   ShmkObject_t* (*mul)(ShmkObject_t*, ShmkObject_t*);
 };
 
+int shmk_object_print(ShmkObject_t* obj);
+ShmkObject_t* shmk_object_add(ShmkObject_t* left, ShmkObject_t* right);
+ShmkObject_t* shmk_object_sub(ShmkObject_t* left, ShmkObject_t* right);
+ShmkObject_t* shmk_object_mul(ShmkObject_t* left, ShmkObject_t* right);
+
 /* Integer */
 
 typedef struct ShmkInteger {

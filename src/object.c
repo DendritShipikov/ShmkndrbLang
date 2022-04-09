@@ -3,6 +3,47 @@
 #include "mem.h"
 #include "object.h"
 
+int shmk_object_print(ShmkObject_t* obj) {
+  void (*print)(ShmkObject_t*);
+  print = obj->vtable->print;
+  if (print == NULL) {
+    fprintf(stderr, "'print' N/I");
+    return 0;
+  }
+  print(obj);
+  return 1;
+}
+
+ShmkObject_t* shmk_object_add(ShmkObject_t* left, ShmkObject_t* right) {
+  ShmkObject_t* (*add)(ShmkObject_t*, ShmkObject_t*);
+  add = left->vtable->add;
+  if (add == NULL) {
+    fprintf(stderr, "'add' N/I");
+    return 0;
+  }
+  return add(left, right);
+}
+
+ShmkObject_t* shmk_object_sub(ShmkObject_t* left, ShmkObject_t* right) {
+  ShmkObject_t* (*sub)(ShmkObject_t*, ShmkObject_t*);
+  sub = left->vtable->sub;
+  if (sub == NULL) {
+    fprintf(stderr, "'add' N/I");
+    return 0;
+  }
+  return sub(left, right);
+}
+
+ShmkObject_t* shmk_object_mul(ShmkObject_t* left, ShmkObject_t* right) {
+  ShmkObject_t* (*mul)(ShmkObject_t*, ShmkObject_t*);
+  mul = left->vtable->mul;
+  if (mul == NULL) {
+    fprintf(stderr, "'add' N/I");
+    return 0;
+  }
+  return mul(left, right);
+}
+
 /* Integer */
 
 ShmkInteger_t* new_integer(ShmkMem_t* mem, int data) {
