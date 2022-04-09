@@ -11,10 +11,11 @@ typedef struct ShmkMem {
 } ShmkMem_t;
 
 ShmkByte_t* shmk_mem_alloc(ShmkMem_t* mem, size_t size);
+int shmk_mem_init(ShmkMem_t* mem, size_t init_size);
+void shmk_mem_free(ShmkMem_t* mem);
 
-extern ShmkMem_t heap;
+extern ShmkMem_t shmk_heap;
 
-int shmk_create_heap(size_t size);
-void shmk_delete_heap();
+extern ShmkMem_t shmk_pool;
 
 #endif

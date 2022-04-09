@@ -26,7 +26,7 @@ static ShmkObject_t* integer_add(ShmkObject_t* left, ShmkObject_t* right) {
     return NULL;
   }
   ShmkInteger_t* other = (ShmkInteger_t*)right;
-  return (ShmkObject_t*)new_integer(&heap, self->data + other->data);
+  return (ShmkObject_t*)new_integer(&shmk_heap, self->data + other->data);
 }
 
 static ShmkObject_t* integer_sub(ShmkObject_t* left, ShmkObject_t* right) {
@@ -36,7 +36,7 @@ static ShmkObject_t* integer_sub(ShmkObject_t* left, ShmkObject_t* right) {
     return NULL;
   }
   ShmkInteger_t* other = (ShmkInteger_t*)right;
-  return (ShmkObject_t*)new_integer(&heap, self->data - other->data);
+  return (ShmkObject_t*)new_integer(&shmk_heap, self->data - other->data);
 }
 
 static ShmkObject_t* integer_mul(ShmkObject_t* left, ShmkObject_t* right) {
@@ -46,7 +46,7 @@ static ShmkObject_t* integer_mul(ShmkObject_t* left, ShmkObject_t* right) {
     return NULL;
   }
   ShmkInteger_t* other = (ShmkInteger_t*)right;
-  return (ShmkObject_t*)new_integer(&heap, self->data * other->data);
+  return (ShmkObject_t*)new_integer(&shmk_heap, self->data * other->data);
 }
 
 struct ShmkVTable shmk_integer_vtable = {
