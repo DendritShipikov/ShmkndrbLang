@@ -2,33 +2,40 @@
 #include <stdio.h>
 #include "mem.h"
 
-typedef char ShmkHeapUnit_t;
+ShmkByte_t* shmk_mem_alloc(ShmkMem_t* mem, size_t size) {
+  if (mem->top + size > mem->end) {
+    int (*grow)(ShmkMem_t*);
+    grow = mem->grow;
+    if (!grow(mem)) return NULL;
+  }
+  ShmkByte_t* obj = mem->top;
+  mem->top += size;
+  return obj;
+}
 
-struct {
-  ShmkHeapUnit_t* mem;
-  ShmkHeapUnit_t* top;
-  ShmkHeapUnit_t* end;
-} heap;
+static int heap_grow(ShmkMem_t* mem) {
+  fprintf(stderr, "Error: memory is out");
+  return 0;
+}
 
-#define MINIMAL_HEAP_SIZE 1000
+ShmkMem_t heap = {
+  NULL,
+  NULL,
+  NULL,
+  heap_grow
+};
 
-int shmk_heap_create() {
-  heap.mem = (ShmkHeapUnit_t*)malloc(MINIMAL_HEAP_SIZE);
-  if (heap.mem == NULL) {
-    fprintf(stderr, "Error: memory is out, cannot create heap");
+int shmk_create_heap(size_t size) {
+  heap.begin = (ShmkByte_t*)malloc(size);
+  if (heap.begin == NULL) {
+    fprintf(stderr, "Error: memory is out, can not create heap");
     return 0;
   }
-  heap.top = heap.mem;
-  heap.end = heap.mem + MINIMAL_HEAP_SIZE;
+  heap.top = heap.begin;
+  heap.end = heap.begin + size;
   return 1;
 }
 
-void* shmk_heap_alloc(size_t size) {
-  if (heap.top + size > heap.end) {
-    fprintf(stderr, "Error: out of memory\n");
-    return NULL;
-  }
-  void* obj = heap.top;
-  heap.top += size;
-  return obj;
+void shmk_delete_heap() {
+  free(heap.begin);
 }

@@ -23,7 +23,7 @@ typedef struct ShmkInteger {
   int data;
 } ShmkInteger_t;
 
-ShmkInteger_t* new_integer(int data);
+ShmkInteger_t* new_integer(ShmkMem_t* mem, int data);
 
 extern struct ShmkVTable shmk_integer_vtable;
 
@@ -34,32 +34,33 @@ typedef struct ShmkArray {
   ShmkObject_t* objects[1];
 } ShmkArray_t;
 
-ShmkArray_t* new_array(size_t size);
+ShmkArray_t* new_array(ShmkMem_t* mem, size_t size);
 
 extern struct ShmkVTable shmk_array_vtable;
 
-/* Vector */
+/* Code */
 
-typedef struct ShmkVector {
+typedef unsigned short ShmkCodeUnit_t;
+
+typedef struct ShmkCode {
   ShmkObject_t base;
-  ShmkArray_t* array;
-  size_t size;
-} ShmkVector_t;
+  ShmkCodeUnit_t* units[1];
+} ShmkCode_t;
 
-ShmkVector_t* new_vector(size_t capacity);
+ShmkCode_t* new_code(ShmkMem_t* mem, size_t size);
 
-extern struct ShmkVTable shmk_vector_vtable;
+extern struct ShmkVTable shmk_code_vtable;
 
 /* Function */
 
 typedef struct ShmkFunction {
   ShmkObject_t base;
-  ShmkArray_t* captures;
   size_t args_count;
-  size_t icode;
+  ShmkCode_t* code;
+  ShmkObject_t* captures[1];
 } ShmkFunction_t;
 
-ShmkFunction_t* new_function(ShmkArray_t* captures, size_t args_count, size_t icode);
+ShmkFunction_t* new_function(ShmkMem_t* mem, ShmkCode_t* code, size_t args_count, size_t captures_count);
 
 extern struct ShmkVTable shmk_function_vtable;
 
