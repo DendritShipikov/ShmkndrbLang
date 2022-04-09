@@ -3,16 +3,20 @@
 
 typedef unsigned char ShmkByte_t;
 
+typedef struct ShmkChunk {
+  ShmkByte_t* data;
+  size_t used;
+  size_t capacity;
+} ShmkChunk_t;
+
+ShmkByte_t* shmk_chunk_bump(ShmkChunk_t* chunk, size_t size);
+
 typedef struct ShmkMem {
-  ShmkByte_t* begin;
-  ShmkByte_t* top;
-  ShmkByte_t* end;
-  int (*grow)(struct ShmkMem*);
+  ShmkChunk_t chunk;
+  ShmkByte_t* (*allocate)(struct ShmkMem*, size_t);
 } ShmkMem_t;
 
-ShmkByte_t* shmk_mem_alloc(ShmkMem_t* mem, size_t size);
-int shmk_mem_init(ShmkMem_t* mem, size_t init_size);
-void shmk_mem_free(ShmkMem_t* mem);
+ShmkByte_t* shmk_mem_allocate(ShmkMem_t* mem, size_t size);
 
 extern ShmkMem_t shmk_heap;
 

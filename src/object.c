@@ -47,7 +47,7 @@ ShmkObject_t* shmk_object_mul(ShmkObject_t* left, ShmkObject_t* right) {
 /* Integer */
 
 ShmkInteger_t* new_integer(ShmkMem_t* mem, int data) {
-  ShmkInteger_t* integer = (ShmkInteger_t*)shmk_mem_alloc(mem, sizeof(ShmkInteger_t));
+  ShmkInteger_t* integer = (ShmkInteger_t*)shmk_mem_allocate(mem, sizeof(ShmkInteger_t));
   if (integer == NULL) return NULL;
   integer->base.vtable = &shmk_integer_vtable;
   integer->base.allocated_size = sizeof(ShmkInteger_t);
@@ -101,7 +101,7 @@ struct ShmkVTable shmk_integer_vtable = {
 
 ShmkArray_t* new_array(ShmkMem_t* mem, size_t size) {
   size_t allocated_size = offsetof(ShmkArray_t, objects) + size * sizeof(ShmkObject_t*);
-  ShmkArray_t* array = (ShmkArray_t*)shmk_mem_alloc(mem, allocated_size);
+  ShmkArray_t* array = (ShmkArray_t*)shmk_mem_allocate(mem, allocated_size);
   if (array == NULL) return NULL;
   array->base.vtable = &shmk_array_vtable;
   array->base.allocated_size = allocated_size;
@@ -119,7 +119,7 @@ struct ShmkVTable shmk_array_vtable = {
 
 ShmkCode_t* new_code(ShmkMem_t* mem, size_t size) {
   size_t allocated_size = offsetof(ShmkCode_t, units) + size * sizeof(ShmkCodeUnit_t);
-  ShmkCode_t* code = (ShmkCode_t*)shmk_mem_alloc(mem, allocated_size);
+  ShmkCode_t* code = (ShmkCode_t*)shmk_mem_allocate(mem, allocated_size);
   if (code == NULL) return NULL;
   code->base.vtable = &shmk_code_vtable;
   code->base.allocated_size = allocated_size;
@@ -137,7 +137,7 @@ struct ShmkVTable shmk_code_vtable = {
 
 ShmkFunction_t* new_function(ShmkMem_t* mem, ShmkCode_t* code, size_t args_count, size_t captures_count) {
   size_t allocated_size = offsetof(ShmkFunction_t, captures) + captures_count * sizeof(ShmkObject_t*);
-  ShmkFunction_t* function = (ShmkFunction_t*)shmk_mem_alloc(mem, allocated_size);
+  ShmkFunction_t* function = (ShmkFunction_t*)shmk_mem_allocate(mem, allocated_size);
   if (function == NULL) return NULL;
   function->base.vtable = &shmk_function_vtable;
   function->base.allocated_size = allocated_size;
