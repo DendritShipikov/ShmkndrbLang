@@ -12,7 +12,7 @@
 #define OP_PUSH_LOCAL 9
 #define OP_PUSH_CONST 10
 #define OP_PUSH_CAPTURE 11
-#define OP_POP_LOCAL 12
+#define OP_STORE_LOCAL 12
 #define OP_ADD 13
 #define OP_SUB 14
 #define OP_MUL 15

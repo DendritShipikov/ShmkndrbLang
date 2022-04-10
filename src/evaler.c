@@ -52,12 +52,50 @@ int shmk_evaler_eval(ShmkEvaler_t* evaler) {
         STACK_PUSH(obj);
         break;
       }
+      case OP_PUSH_LOCAL: {
+        size_t ilocal = NEXT_OPCODE;
+        ShmkObject_t* obj = evaler->frame->locals[ilocal];
+        STACK_PUSH(obj);
+        break;
+      }
+      case OP_PUSH_CAPTURE: {
+        size_t icapture = NEXT_OPCODE;
+        ShmkObject_t* obj = evaler->frame->function->captures[icapture];
+        STACK_PUSH(obj);
+        break;
+      }
+      case OP_PUSH_LOCAL: {
+        size_t ilocal = NEXT_OPCODE;
+        evaler->frame->locals[ilocal] = STACK_POP();
+        break;
+      }
       case OP_ADD: {
         ShmkObject_t* right = STACK_POP();
         ShmkObject_t* left = STACK_POP();
         ShmkObject_t* obj = shmk_object_add(left, right);
         if (obj == NULL) return 0;
         STACK_PUSH(obj);
+        break;
+      }
+      case OP_SUB: {
+        ShmkObject_t* right = STACK_POP();
+        ShmkObject_t* left = STACK_POP();
+        ShmkObject_t* obj = shmk_object_sub(left, right);
+        if (obj == NULL) return 0;
+        STACK_PUSH(obj);
+        break;
+      }
+      case OP_MUL: {
+        ShmkObject_t* right = STACK_POP();
+        ShmkObject_t* left = STACK_POP();
+        ShmkObject_t* obj = shmk_object_mul(left, right);
+        if (obj == NULL) return 0;
+        STACK_PUSH(obj);
+        break;
+      }
+      case OP_PRINT: {
+        ShmkObject_t* obj = STACK_POP();
+        if (!shmk_object_print(obj)) return 0;
         break;
       }
       default:
