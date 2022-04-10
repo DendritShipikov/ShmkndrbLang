@@ -64,7 +64,7 @@ int shmk_evaler_eval(ShmkEvaler_t* evaler) {
         STACK_PUSH(obj);
         break;
       }
-      case OP_PUSH_LOCAL: {
+      case OP_STORE_LOCAL: {
         size_t ilocal = NEXT_OPCODE;
         evaler->frame->locals[ilocal] = STACK_POP();
         break;
@@ -96,6 +96,20 @@ int shmk_evaler_eval(ShmkEvaler_t* evaler) {
       case OP_PRINT: {
         ShmkObject_t* obj = STACK_POP();
         if (!shmk_object_print(obj)) return 0;
+        break;
+      }
+      case OP_MAKE_FUNCTION: {
+        size_t nargs = NEXT_OPCODE;
+        size_t ncaptures = NEXT_OPCODE;
+        ShmkObject_t* obj = STACK_POP();
+        if (obj->vtable != &shmk_code_vtable) { fprintf(stderr, "Error: op_make_function, object is not a code\n"); return 0; }
+        ShmkCode_t* code = (ShmkCode_t*)obj;
+        ShmkFunction_t* function = new_function((ShmkMem_t*)&shmk_heap, code, nargs, ncaptures);
+        if (function == NULL) return 0;
+        evaler->sp -= ncaptures;
+        ShmkObject_t** captures = (ShmkObject_t**)evaler->sp;
+        for (size_t i = 0; i < ncaptures; ++i) function->captures[i] = captures[i];
+        STACK_PUSH((ShmkObject_t*)function);
         break;
       }
       default:
