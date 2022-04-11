@@ -8,8 +8,13 @@ typedef struct ShmkObject {
   int is_marked;
 } ShmkObject_t;
 
+typedef struct ShmkClosure {
+  void (*work)(struct ShmkClosure*, ShmkObject_t*);
+} ShmkClosure_t;
+
 struct ShmkVTable {
   size_t (*allocated)(ShmkObject_t*);
+  void (*atho)(ShmkObject_t*, ShmkClosure_t*); // apply to held objects
   void (*print)(ShmkObject_t*);
   ShmkObject_t* (*add)(ShmkObject_t*, ShmkObject_t*);
   ShmkObject_t* (*sub)(ShmkObject_t*, ShmkObject_t*);
@@ -17,6 +22,7 @@ struct ShmkVTable {
 };
 
 size_t shmk_object_allocated(ShmkObject_t* obj);
+void shmk_object_atho(ShmkObject_t* obj, ShmkClosure_t* cl);
 int shmk_object_print(ShmkObject_t* obj);
 ShmkObject_t* shmk_object_add(ShmkObject_t* left, ShmkObject_t* right);
 ShmkObject_t* shmk_object_sub(ShmkObject_t* left, ShmkObject_t* right);

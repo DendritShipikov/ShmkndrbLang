@@ -5,6 +5,12 @@
 
 size_t shmk_object_allocated(ShmkObject_t* obj) { return (obj->vtable->allocated)(obj); }
 
+void shmk_object_atho(ShmkObject_t* obj, ShmkClosure_t* cl) {
+  void (*atho)(ShmkObject_t*, ShmkClosure_t*);
+  atho = obj->vtable->atho;
+  if (atho != NULL) atho(obj, cl);
+}
+
 int shmk_object_print(ShmkObject_t* obj) {
   void (*print)(ShmkObject_t*);
   print = obj->vtable->print;
@@ -101,6 +107,7 @@ static ShmkObject_t* integer_mul(ShmkObject_t* left, ShmkObject_t* right) {
 
 struct ShmkVTable shmk_integer_vtable = {
   integer_allocated,
+  NULL,
   integer_print,
   integer_add,
   integer_sub,
@@ -119,8 +126,16 @@ static size_t array_allocated(ShmkObject_t* obj) {
   return SHMK_ARRAY_STA(array->size);
 }
 
+static void array_atho(ShmkObject_t* obj, ShmkClosure_t* cl) {
+  ShmkArray_t* array = (ShmkArray_t*)obj;
+  void (*work)(ShmkClosure_t*, ShmkObject_t*);
+  work = cl->work;
+  for (size_t i = 0; i < array->size; ++i) work(cl, array->objects[i]);
+}
+
 struct ShmkVTable shmk_array_vtable = {
   array_allocated,
+  array_atho,
   NULL,
   NULL,
   NULL,
@@ -144,6 +159,7 @@ struct ShmkVTable shmk_code_vtable = {
   NULL,
   NULL,
   NULL,
+  NULL,
   NULL
 };
 
@@ -161,8 +177,17 @@ static size_t function_allocated(ShmkObject_t* obj) {
   return SHMK_FUNCTION_STA(function->ncaptures);
 }
 
+static void function_atho(ShmkObject_t* obj, ShmkClosure_t* cl) {
+  ShmkFunction_t* function = (ShmkFunction_t*)obj;
+  void (*work)(ShmkClosure_t*, ShmkObject_t*);
+  work = cl->work;
+  work(cl, (ShmkObject_t*)function->code);
+  for (size_t i = 0; i < function->ncaptures; ++i) work(cl, function->captures[i]);
+}
+
 struct ShmkVTable shmk_function_vtable = {
   function_allocated,
+  function_atho,
   NULL,
   NULL,
   NULL,
