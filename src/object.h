@@ -29,7 +29,7 @@ typedef struct ShmkInteger {
   int data;
 } ShmkInteger_t;
 
-ShmkInteger_t* new_integer(ShmkMem_t* mem, int data);
+void shmk_integer_construct(ShmkInteger_t* integer, int data);
 
 extern struct ShmkVTable shmk_integer_vtable;
 
@@ -41,7 +41,9 @@ typedef struct ShmkArray {
   ShmkObject_t* objects[1];
 } ShmkArray_t;
 
-ShmkArray_t* new_array(ShmkMem_t* mem, size_t size);
+#define SHMK_ARRAY_STA(size) (offsetof(ShmkArray_t, objects) + (size) * sizeof(ShmkObject_t*))
+
+void shmk_array_construct(ShmkArray_t* array, size_t size);
 
 extern struct ShmkVTable shmk_array_vtable;
 
@@ -56,7 +58,9 @@ typedef struct ShmkCode {
   ShmkCodeUnit_t units[1];
 } ShmkCode_t;
 
-ShmkCode_t* new_code(ShmkMem_t* mem, size_t size);
+#define SHMK_CODE_STA(size) (offsetof(ShmkCode_t, units) + (size) * sizeof(ShmkCodeUnit_t))
+
+void shmk_code_construct(ShmkCode_t* code, size_t size);
 
 extern struct ShmkVTable shmk_code_vtable;
 
@@ -70,7 +74,9 @@ typedef struct ShmkFunction {
   ShmkObject_t* captures[1];
 } ShmkFunction_t;
 
-ShmkFunction_t* new_function(ShmkMem_t* mem, ShmkCode_t* code, size_t nargs, size_t ncaptures);
+#define SHMK_FUNCTION_STA(ncaptures) (offsetof(ShmkFunction_t, captures) + (ncaptures) * sizeof(ShmkObject_t*))
+
+void shmk_function_construct(ShmkFunction_t* function, ShmkCode_t* code, size_t nargs, size_t ncaptures);
 
 extern struct ShmkVTable shmk_function_vtable;
 

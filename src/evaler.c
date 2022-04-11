@@ -100,8 +100,9 @@ int shmk_evaler_eval() {
         ShmkObject_t* obj = STACK_POP();
         if (obj->vtable != &shmk_code_vtable) { fprintf(stderr, "Error: op_make_function, object is not a code\n"); return 0; }
         ShmkCode_t* code = (ShmkCode_t*)obj;
-        ShmkFunction_t* function = new_function((ShmkMem_t*)&shmk_heap, code, nargs, ncaptures);
+        ShmkFunction_t* function = (ShmkFunction_t*)shmk_heap_allocate(SHMK_FUNCTION_STA(ncaptures));
         if (function == NULL) return 0;
+        shmk_function_construct(function, code, nargs, ncaptures);
         for (size_t i = 0; i < ncaptures; ++i) function->captures[i] = STACK_POP();
         STACK_PUSH((ShmkObject_t*)function);
         break;
