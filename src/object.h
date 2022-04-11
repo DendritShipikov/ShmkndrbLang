@@ -5,11 +5,11 @@ struct ShmkVTable;
 
 typedef struct ShmkObject {
   struct ShmkVTable* vtable;
-  int is_marked;
+  struct ShmkObject* move_to;
 } ShmkObject_t;
 
 typedef struct ShmkClosure {
-  void (*work)(struct ShmkClosure*, ShmkObject_t*);
+  void (*work)(struct ShmkClosure*, ShmkObject_t**);
 } ShmkClosure_t;
 
 struct ShmkVTable {
