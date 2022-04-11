@@ -11,5 +11,6 @@ typedef struct ShmkFrame {
 } ShmkFrame_t;
 
 int shmk_evaler_eval();
+void shmk_evaler_aoth(ShmkClosure_t* cl);
 
 #endif
