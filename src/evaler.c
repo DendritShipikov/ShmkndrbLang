@@ -5,35 +5,22 @@
 #include "evaler.h"
 #include "opcodes.h"
 
-#define CHECK_OVERFLOW(e) if ((ShmkByte_t*)evaler->sp > evaler->end) { fprintf(stderr, "Error: stack overflow\n"); return e; }
-#define STACK_POP() *(--evaler->sp)
-#define STACK_PUSH(o)                    \
-  do {                                   \
-    ShmkObject_t** pp = evaler->sp++;    \
-    CHECK_OVERFLOW(0)                    \
-    *pp = o;                             \
+ShmkByte_t* shmk_evaler_mem = NULL;
+ShmkObject_t** shmk_evaler_sp = NULL;
+ShmkFrame_t* shmk_evaler_frame = NULL;
+
+#define CHECK_OVERFLOW if ((ShmkByte_t*)shmk_evaler_sp < shmk_evaler_mem) { fprintf(stderr, "Error: stack overflow\n"); return 0; }
+#define STACK_POP() *shmk_evaler_sp++
+#define STACK_PUSH(o)      \
+  do {                     \
+    shmk_evaler_sp--;      \
+    CHECK_OVERFLOW         \
+    *shmk_evaler_sp = o;   \
   } while (0)
-#define NEXT_OPCODE *(evaler->frame->pc)++
+#define NEXT_OPCODE *shmk_evaler_frame->pc++
 
-ShmkFrame_t* shmk_evaler_create_frame(ShmkEvaler_t* evaler, ShmkFunction_t* function) {
-  ShmkCode_t* code = function->code;
-  size_t frame_size = offsetof(ShmkFrame_t, locals) + code->nlocals * sizeof(ShmkObject_t*);
-  size_t nargs = function->nargs;
-  evaler->sp -= nargs;
-  ShmkFrame_t* frame = (ShmkFrame_t*)evaler->sp;
-  ShmkObject_t** args = evaler->sp;
-  evaler->sp += frame_size;
-  CHECK_OVERFLOW(NULL)
-  for (size_t i = 0; i != nargs; ++i) frame->locals[nargs - 1 - i] = args[nargs - 1 - i];
-  frame->back = evaler->frame;
-  frame->function = function;
-  frame->pc = code->units;
-  evaler->frame = frame;
-  return frame;
-}
-
-int shmk_evaler_eval(ShmkEvaler_t* evaler) {
-  while (evaler->frame != NULL) {
+int shmk_evaler_eval() {
+  while (shmk_evaler_frame != NULL) {
     switch (NEXT_OPCODE) {
       case OP_INVOKE: {
         size_t nargs = NEXT_OPCODE;
@@ -41,32 +28,41 @@ int shmk_evaler_eval(ShmkEvaler_t* evaler) {
         if (obj->vtable != &shmk_function_vtable) { fprintf(stderr, "Error: op_invoke, object is not a function\n"); return 0; }
         ShmkFunction_t* function = (ShmkFunction_t*)obj;
         if (nargs != function->nargs) { fprintf(stderr, "Error: op_invoke, nargs != function.nargs\n"); return 0; }
-        ShmkFrame_t* frame = shmk_evaler_create_frame(evaler, function);
-        if (frame == NULL) return 0;
+        ShmkCode_t* code = function->code;
+        ShmkObject_t** locals = shmk_evaler_sp += nargs;
+        size_t frame_size = sizeof(ShmkFrame_t) + code->nlocals * sizeof(ShmkObject_t*);
+        shmk_evaler_sp = (ShmkObject_t**)((ShmkByte_t*)locals - frame_size);
+        CHECK_OVERFLOW
+        ShmkFrame_t* frame = (ShmkFrame_t*)shmk_evaler_sp;
+        frame->function = function;
+        frame->pc = code->units;
+        frame->locals = locals;
+        frame->back = shmk_evaler_frame;
+        shmk_evaler_frame = frame;
         break;
       }
       case OP_RETURN_VALUE: {
         ShmkObject_t* obj = STACK_POP();
-        evaler->sp = (ShmkObject_t**)evaler->frame;
-        evaler->frame = evaler->frame->back;
+        shmk_evaler_sp = shmk_evaler_frame->locals;
+        shmk_evaler_frame = shmk_evaler_frame->back;
         STACK_PUSH(obj);
         break;
       }
       case OP_PUSH_LOCAL: {
         size_t ilocal = NEXT_OPCODE;
-        ShmkObject_t* obj = evaler->frame->locals[ilocal];
+        ShmkObject_t* obj = shmk_evaler_frame->locals[-ilocal];
         STACK_PUSH(obj);
         break;
       }
       case OP_PUSH_CAPTURE: {
         size_t icapture = NEXT_OPCODE;
-        ShmkObject_t* obj = evaler->frame->function->captures[icapture];
+        ShmkObject_t* obj = shmk_evaler_frame->function->captures[icapture];
         STACK_PUSH(obj);
         break;
       }
       case OP_STORE_LOCAL: {
         size_t ilocal = NEXT_OPCODE;
-        evaler->frame->locals[ilocal] = STACK_POP();
+        shmk_evaler_frame->locals[-ilocal] = STACK_POP();
         break;
       }
       case OP_ADD: {
@@ -106,9 +102,7 @@ int shmk_evaler_eval(ShmkEvaler_t* evaler) {
         ShmkCode_t* code = (ShmkCode_t*)obj;
         ShmkFunction_t* function = new_function((ShmkMem_t*)&shmk_heap, code, nargs, ncaptures);
         if (function == NULL) return 0;
-        evaler->sp -= ncaptures;
-        ShmkObject_t** captures = (ShmkObject_t**)evaler->sp;
-        for (size_t i = 0; i < ncaptures; ++i) function->captures[i] = captures[i];
+        for (size_t i = 0; i < ncaptures; ++i) function->captures[i] = STACK_POP();
         STACK_PUSH((ShmkObject_t*)function);
         break;
       }

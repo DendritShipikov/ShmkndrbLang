@@ -7,16 +7,9 @@ typedef struct ShmkFrame {
   struct ShmkFrame* back;
   ShmkCodeUnit_t* pc;
   ShmkFunction_t* function;
-  ShmkObject_t* locals[1];
+  ShmkObject_t** locals;
 } ShmkFrame_t;
 
-typedef struct ShmkEvaler {
-  ShmkByte_t* begin;
-  ShmkByte_t* end;
-  ShmkObject_t** sp;
-  ShmkFrame_t* frame;
-} ShmkEvaler_t;
-
-int shmk_evaler_eval(ShmkEvaler_t* evaler);
+int shmk_evaler_eval();
 
 #endif
