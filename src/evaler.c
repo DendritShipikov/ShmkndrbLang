@@ -119,6 +119,7 @@ void shmk_evaler_aoth(ShmkClosure_t* cl) {
   void (*work)(ShmkClosure_t*, ShmkObject_t*);
   work = cl->work;
   for (ShmkFrame_t* frame = shmk_evaler_frame; frame != NULL; frame = frame->back) {
+    work(cl, (ShmkObject_t*)frame->function);
     ShmkObject_t** iter = (ShmkObject_t**)((ShmkByte_t*)frame + sizeof(ShmkFrame_t));
     ShmkObject_t** end = frame->locals;
     for (; iter != end; ++iter) work(cl, *iter);
