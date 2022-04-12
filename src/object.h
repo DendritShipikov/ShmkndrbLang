@@ -61,6 +61,7 @@ typedef struct ShmkCode {
   ShmkObject_t base;
   size_t size;
   size_t nlocals;
+  size_t depth;
   ShmkCodeUnit_t units[1];
 } ShmkCode_t;
 
