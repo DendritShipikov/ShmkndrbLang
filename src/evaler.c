@@ -115,7 +115,7 @@ int shmk_evaler_eval() {
   return 1;
 }
 
-void shmk_evaler_atho(ShmkClosure_t* cl) {
+void shmk_evaler_apply_to_each(ShmkClosure_t* cl) {
   void (*work)(ShmkClosure_t*, ShmkObject_t**);
   work = cl->work;
   for (ShmkFrame_t* frame = shmk_evaler_frame; frame != NULL; frame = frame->back) {

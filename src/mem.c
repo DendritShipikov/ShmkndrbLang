@@ -14,22 +14,22 @@ ShmkByte_t* shmk_heap_top = NULL;
 #define MARK(o) (o)->move_to = (ShmkObject_t*)1
 #define UNMARK(o) (o)->move_to = NULL
 
-void mark_closure_work(ShmkClosure_t* cl, ShmkObject_t** pp) {
-  ShmkObject_t* obj = *pp;
+void mark_closure_work(ShmkClosure_t* cl, ShmkObject_t** iter) {
+  ShmkObject_t* obj = *iter;
   if (UNMARKED(obj)) {
     MARK(obj);
-    shmk_object_atho(obj, cl);
+    shmk_object_apply_to_each(obj, cl);
   }
 }
 
-void update_pointers_closure_work(ShmkClosure_t* cl, ShmkObject_t** pp) {
-  ShmkObject_t* obj = *pp;
-  *pp = obj->move_to;
+void update_pointers_closure_work(ShmkClosure_t* cl, ShmkObject_t** iter) {
+  ShmkObject_t* obj = *iter;
+  *iter = obj->move_to;
 }
 
 void shmk_gc() {
   ShmkClosure_t mark_closure = { mark_closure_work };
-  shmk_evaler_atho(&mark_closure);
+  shmk_evaler_apply_to_each(&mark_closure);
   ShmkByte_t* top = shmk_heap_begin;
   ShmkByte_t* cp = top;
   while (top < shmk_heap_end) {
@@ -46,10 +46,10 @@ void shmk_gc() {
   while (top < shmk_heap_end) {
     ShmkObject_t* obj = (ShmkObject_t*)top;
     size_t size = shmk_object_allocated(obj);
-    if (MARKED(obj)) shmk_object_atho(obj, &update_pointers_closure);
+    if (MARKED(obj)) shmk_object_apply_to_each(obj, &update_pointers_closure);
     top += size;
   }
-  shmk_evaler_atho(&update_pointers_closure);
+  shmk_evaler_apply_to_each(&update_pointers_closure);
   top = shmk_heap_begin;
   while (top < shmk_heap_end) {
     ShmkObject_t* obj = (ShmkObject_t*)top;
