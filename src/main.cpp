@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <string_view>
 #include <memory>
 #include <vector>
 #include <unordered_map>
@@ -680,7 +681,7 @@ public:
     else m_code->append(INVOKE_SELF);
     m_code->append(selfvalue.m_argvec.size());
   }
-  void visit(const AST::IfThenElse& ite) {
+  void visit(const AST::IfThenElse& ite) override {
     if (m_tail) {
       /*  <cond>  */
       m_tail = false;
@@ -991,7 +992,7 @@ std::vector< std::unique_ptr<AST::Stmt> > Parser::parse_stmts() {
 
 int main(int argc, char** argv) {
   if (argc < 2) {
-    std::cout << "Usage: prog [options] filename\n";
+    std::cout << "Usage: shmk [options] filename\n";
     return 0;
   }
   std::ifstream ifs{argv[argc - 1]};
