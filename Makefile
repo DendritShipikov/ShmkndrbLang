@@ -1,12 +1,12 @@
 CC=clang
 LINK=clang
-CFLAGS=-c -O2 -std=c++17
-SHMK=build/shmk.exe
+CFLAGS=-c -O2 -Wall
+SHMK=shmk.exe
 
 all : $(SHMK)
 
 $(SHMK) : main.o
 	$(LINK) -o $(SHMK) main.o
 
-main.o : src/main.cpp
-	$(CC) $(CFLAGS) src/main.cpp
+main.o : src/main.c
+	$(CC) $(CFLAGS) src/main.c
