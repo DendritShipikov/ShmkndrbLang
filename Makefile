@@ -1,7 +1,7 @@
 CC=clang
 LINK=clang
 CFLAGS=-c -O2 -std=c++17
-SHMK=build/shmk.exe
+SHMK=shmk.exe
 
 all : $(SHMK)
 
